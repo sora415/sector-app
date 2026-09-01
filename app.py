@@ -128,7 +128,7 @@ CRYPTO = {
     "リップル": "XRP-USD", "BNB": "BNB-USD", "ドージコイン": "DOGE-USD",
     "カルダノ": "ADA-USD", "アバランチ": "AVAX-USD", "チェーンリンク": "LINK-USD",
     "ポルカドット": "DOT-USD", "ライトコイン": "LTC-USD", "ビットコインキャッシュ": "BCH-USD",
-    "トロン": "TRX-USD", "ポリゴン": "POL-USD", "柴犬コイン": "SHIB-USD",
+    "トロン": "TRX-USD", "ステラルーメン": "XLM-USD", "柴犬コイン": "SHIB-USD",
 }
 
 FOREX = {
@@ -154,14 +154,14 @@ SEMICON_STOCKS = {
     "EDA / 半導体IP":         ["SNPS", "CDNS", "ARM"],
     "半導体材料":             ["ENTG", "CMC", "4063.T", "4091.T", "3436.T", "5201.T"],
     "電子部品 (日本)":        ["6981.T", "6762.T", "6976.T", "6779.T", "6770.T", "6988.T"],
-    "AIサーバー / DC電力":    ["SMCI", "DELL", "HPE", "VRT", "ANET", "PSTG"],
+    "AIサーバー / DC電力":    ["SMCI", "DELL", "HPE", "VRT", "ANET", "NTAP"],
 }
 
 # NASDAQ-100 主要銘柄を業界別に（finvizスタイル）
 NASDAQ_STOCKS = {
     "テクノロジー(半導体)":   ["NVDA", "AVGO", "AMD", "QCOM", "INTC", "TXN", "MU", "ADI", "MRVL", "NXPI", "MCHP", "ASML", "AMAT", "LRCX", "KLAC"],
     "テクノロジー(SW/HW)":    ["MSFT", "AAPL", "ADBE", "CRM", "ORCL", "CSCO", "INTU", "NOW", "PANW", "CRWD", "FTNT", "ADSK", "WDAY", "TEAM", "DDOG", "SNPS", "CDNS"],
-    "通信サービス":           ["GOOGL", "GOOG", "META", "NFLX", "CMCSA", "TMUS", "CHTR", "WBD", "EA", "TTWO"],
+    "通信サービス":           ["GOOGL", "GOOG", "META", "NFLX", "CMCSA", "TMUS", "CHTR", "WBD", "TTWO"],
     "一般消費財":             ["AMZN", "TSLA", "MELI", "BKNG", "SBUX", "MAR", "ABNB", "ORLY", "ROST", "LULU", "PDD", "DASH"],
     "ヘルスケア":             ["AMGN", "GILD", "VRTX", "REGN", "ISRG", "MRNA", "DXCM", "IDXX", "BIIB", "ILMN"],
     "生活必需品":             ["COST", "PEP", "MDLZ", "KDP", "MNST", "KHC", "CTAS"],
@@ -172,7 +172,7 @@ NASDAQ_STOCKS = {
 # S&P500 主要銘柄を業界別に（NASDAQ以外の大型株も含む広範な米国大型株ヒートマップ）
 SP500_STOCKS = {
     "テクノロジー":       ["AAPL", "MSFT", "NVDA", "AVGO", "ORCL", "CRM", "AMD", "ADBE", "CSCO", "ACN", "IBM", "QCOM", "TXN", "INTU", "NOW", "AMAT", "MU", "ADI"],
-    "通信サービス":       ["GOOGL", "META", "NFLX", "DIS", "T", "VZ", "CMCSA", "TMUS", "CHTR", "EA"],
+    "通信サービス":       ["GOOGL", "META", "NFLX", "DIS", "T", "VZ", "CMCSA", "TMUS", "CHTR", "TTWO"],
     "一般消費財":         ["AMZN", "TSLA", "HD", "MCD", "NKE", "LOW", "SBUX", "BKNG", "TJX", "ABNB", "MAR", "GM", "F"],
     "生活必需品":         ["WMT", "PG", "KO", "PEP", "COST", "PM", "MO", "CL", "MDLZ", "TGT", "KMB"],
     "ヘルスケア":         ["LLY", "UNH", "JNJ", "ABBV", "MRK", "TMO", "ABT", "PFE", "DHR", "AMGN", "BMY", "GILD", "CVS", "MDT"],
