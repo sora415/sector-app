@@ -123,6 +123,21 @@ THEMATIC = {
     "配当貴族": "NOBL", "モメンタム": "MTUM", "農業": "MOO", "米国株全体": "VTI",
 }
 
+CRYPTO = {
+    "ビットコイン": "BTC-USD", "イーサリアム": "ETH-USD", "ソラナ": "SOL-USD",
+    "リップル": "XRP-USD", "BNB": "BNB-USD", "ドージコイン": "DOGE-USD",
+    "カルダノ": "ADA-USD", "アバランチ": "AVAX-USD", "チェーンリンク": "LINK-USD",
+    "ポルカドット": "DOT-USD", "ライトコイン": "LTC-USD", "ビットコインキャッシュ": "BCH-USD",
+    "トロン": "TRX-USD", "ポリゴン": "POL-USD", "柴犬コイン": "SHIB-USD",
+}
+
+FOREX = {
+    "ドル円": "JPY=X", "ユーロドル": "EURUSD=X", "ポンドドル": "GBPUSD=X",
+    "豪ドル/米ドル": "AUDUSD=X", "ドルスイス": "USDCHF=X", "ドルカナダ": "USDCAD=X",
+    "ユーロ円": "EURJPY=X", "ポンド円": "GBPJPY=X", "NZドル/米ドル": "NZDUSD=X",
+    "ドル人民元": "CNY=X", "ユーロポンド": "EURGBP=X", "豪ドル円": "AUDJPY=X",
+}
+
 # ─── 個別株ヒートマップ (finviz/NASDAQ スタイル) ──────────────────────────────
 # group(業界) -> [ticker, ...]   個別銘柄をタイルで表示
 SEMICON_STOCKS = {
@@ -562,7 +577,7 @@ period_key = st.radio(
 st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
 (tab_dash, tab_us, tab_jp, tab_global, tab_theme, tab_commo,
- tab_semi, tab_ndx, tab_sp500, tab_jpstock) = st.tabs([
+ tab_semi, tab_ndx, tab_sp500, tab_jpstock, tab_crypto, tab_fx) = st.tabs([
     "🏠 概況ダッシュボード",
     "🇺🇸 米国セクター",
     "🇯🇵 日本セクター",
@@ -573,6 +588,8 @@ st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
     "💹 NASDAQヒートマップ",
     "🗽 S&P500ヒートマップ",
     "🗾 日本株ヒートマップ",
+    "₿ 暗号資産",
+    "💱 為替",
 ])
 
 with tab_dash:
@@ -616,6 +633,14 @@ with tab_sp500:
 with tab_jpstock:
     with st.spinner("日本主要株データ取得中..."):
         render_heatmap_tab(JP_STOCKS, "日経225主要株", period_key, height=820)
+
+with tab_crypto:
+    with st.spinner("暗号資産データ取得中..."):
+        render_sector_tab(CRYPTO, "暗号資産", period_key)
+
+with tab_fx:
+    with st.spinner("為替データ取得中..."):
+        render_sector_tab(FOREX, "為替", period_key)
 
 st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 st.caption("データ: Yahoo Finance ｜ ヒートマップ: 個別銘柄をタイル表示・面積=時価総額・色=変化率 ｜ キャッシュ: 5分")
