@@ -121,6 +121,11 @@ THEMATIC = {
     "次世代ネット(ARK)": "ARKW", "フィンテック(ARK)": "ARKF", "レアアース": "REMX",
     "電池・蓄電": "BATT", "IPO新規上場": "IPO", "高配当(SCHD)": "SCHD",
     "配当貴族": "NOBL", "モメンタム": "MTUM", "農業": "MOO", "米国株全体": "VTI",
+    "クリーンテック": "PBW", "カーボン(排出権)": "KRBN", "配当成長": "DGRO",
+    "自社株買い": "PKW", "米国バリュー": "VTV", "米国グロース": "VUG",
+    "米国リート": "VNQ", "世界リート": "REET", "米銀行株": "KBWB", "eコマース": "IBUY",
+    "自動運転・EV": "DRIV", "小型グロース": "VBK", "ロボティクス(ROBO)": "ROBO",
+    "破壊的技術(XT)": "XT",
 }
 
 CRYPTO = {
@@ -200,7 +205,21 @@ JP_STOCKS = {
     "鉄鋼・非鉄":         ["5401.T", "5411.T", "5713.T"],
     "ゲーム・エンタメ":   ["7974.T", "9766.T", "7832.T"],
     "不動産":             ["8801.T", "8802.T", "3289.T"],
-    "電力・運輸":         ["9501.T", "9503.T", "9020.T", "9022.T", "9101.T"],
+    "電力・運輸":         ["9501.T", "9503.T", "9020.T", "9022.T", "9101.T", "9201.T", "9202.T"],
+    "サービス・IT":       ["4307.T", "6532.T", "6098.T"],
+    "医療機器・化粧品":   ["4543.T", "7733.T", "4911.T"],
+    "自動車部品・精密":   ["6902.T", "7259.T", "7751.T", "7741.T"],
+}
+
+# 世界の大型株（米国上場ADR）を地域別に — いずれも米市場で高流動
+GLOBAL_ADR_STOCKS = {
+    "中国":               ["BABA", "PDD", "JD", "BIDU", "NIO", "LI", "XPEV", "TCOM", "BEKE", "NTES", "TME"],
+    "欧州":               ["ASML", "SAP", "NVO", "NVS", "AZN", "SNY", "TTE", "SHEL", "BP", "UL", "DEO", "BTI", "STLA", "SPOT", "ERIC", "HSBC"],
+    "日本":               ["TM", "SONY", "HMC", "MUFG", "SMFG", "MFG", "NMR"],
+    "中南米":             ["MELI", "NU", "VALE", "PBR", "ITUB", "BBD", "ABEV"],
+    "インド":             ["INFY", "HDB", "IBN", "WIT"],
+    "カナダ":             ["SHOP", "RY", "TD", "CNQ", "ENB", "SU"],
+    "台湾・アジア・中東": ["TSM", "SE", "NICE", "CHKP", "WIX", "MNDY"],
 }
 
 PERIOD_OPTS = {"前日比": "1d", "5日間": "5d", "1ヶ月": "1mo"}
@@ -236,6 +255,25 @@ TICKER_NAMES = {
     "8801.T": "三井不動産", "8802.T": "三菱地所", "3289.T": "東急不HD",
     "9501.T": "東京電力", "9503.T": "関西電力", "9020.T": "JR東日本",
     "9022.T": "JR東海", "9101.T": "日本郵船",
+    "9201.T": "JAL", "9202.T": "ANA", "4307.T": "野村総研", "6532.T": "ベイカレント",
+    "4543.T": "テルモ", "7733.T": "オリンパス", "4911.T": "資生堂", "6902.T": "デンソー",
+    "7259.T": "アイシン", "7751.T": "キヤノン", "7741.T": "HOYA",
+    # ── 米国上場ADR ───────────────────────────────────────────────
+    "BABA": "アリババ", "PDD": "拼多多(PDD)", "JD": "京東(JD)", "BIDU": "百度",
+    "NIO": "NIO", "LI": "理想汽車", "XPEV": "小鵬汽車", "TCOM": "Trip.com",
+    "BEKE": "貝殻", "NTES": "網易", "TME": "テンセント音楽", "ASML": "ASML",
+    "SAP": "SAP", "NVO": "ノボノルディスク", "NVS": "ノバルティス", "AZN": "アストラゼネカ",
+    "SNY": "サノフィ", "TTE": "トタルエナジーズ", "SHEL": "シェル", "BP": "BP",
+    "UL": "ユニリーバ", "DEO": "ディアジオ", "BTI": "BAT", "STLA": "ステランティス",
+    "SPOT": "スポティファイ", "ERIC": "エリクソン", "HSBC": "HSBC", "TM": "トヨタ(ADR)",
+    "SONY": "ソニー(ADR)", "HMC": "ホンダ(ADR)", "MUFG": "三菱UFJ(ADR)",
+    "SMFG": "三井住友(ADR)", "MFG": "みずほ(ADR)", "NMR": "野村(ADR)",
+    "MELI": "メルカドリブレ", "NU": "Nubank", "VALE": "ヴァーレ", "PBR": "ペトロブラス",
+    "ITUB": "イタウ・ウニ", "BBD": "ブラデスコ", "ABEV": "アンブレブ",
+    "INFY": "インフォシス", "HDB": "HDFC銀行", "IBN": "ICICI銀行", "WIT": "ウィプロ",
+    "SHOP": "Shopify", "RY": "ロイヤル銀行", "TD": "TD銀行", "CNQ": "カナディアン天然",
+    "ENB": "エンブリッジ", "SU": "サンコア(Suncor)", "SE": "シー(Sea)", "NICE": "NICE",
+    "CHKP": "チェックポイント", "WIX": "Wix", "MNDY": "monday.com", "TSM": "TSMC",
 }
 
 
@@ -577,7 +615,7 @@ period_key = st.radio(
 st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
 (tab_dash, tab_us, tab_jp, tab_global, tab_theme, tab_commo,
- tab_semi, tab_ndx, tab_sp500, tab_jpstock, tab_crypto, tab_fx) = st.tabs([
+ tab_semi, tab_ndx, tab_sp500, tab_jpstock, tab_adr, tab_crypto, tab_fx) = st.tabs([
     "🏠 概況ダッシュボード",
     "🇺🇸 米国セクター",
     "🇯🇵 日本セクター",
@@ -588,6 +626,7 @@ st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
     "💹 NASDAQヒートマップ",
     "🗽 S&P500ヒートマップ",
     "🗾 日本株ヒートマップ",
+    "🌐 世界ADRヒートマップ",
     "₿ 暗号資産",
     "💱 為替",
 ])
@@ -633,6 +672,10 @@ with tab_sp500:
 with tab_jpstock:
     with st.spinner("日本主要株データ取得中..."):
         render_heatmap_tab(JP_STOCKS, "日経225主要株", period_key, height=820)
+
+with tab_adr:
+    with st.spinner("世界ADR個別株データ取得中..."):
+        render_heatmap_tab(GLOBAL_ADR_STOCKS, "世界の大型株(ADR)", period_key, height=820)
 
 with tab_crypto:
     with st.spinner("暗号資産データ取得中..."):
