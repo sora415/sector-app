@@ -23,6 +23,13 @@ st.markdown("""
   section[data-testid="stSidebar"] { display: none; }
   .block-container { padding: 1.2rem 2rem 2rem; max-width: 1400px; }
 
+  /* 指標ストリップ: 画面幅に応じて自動で折り返す（スマホ対応） */
+  .idx-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px;
+    margin-bottom: 4px;
+  }
   .idx-card {
     background: #161b22;
     border: 1px solid #30363d;
@@ -55,6 +62,23 @@ st.markdown("""
   .stDivider { border-color: #30363d !important; }
   .stSpinner > div { border-top-color: #58a6ff !important; }
   footer { display: none; }
+
+  /* タブが多いので横スクロール可能に（スマホで見切れ防止） */
+  .stTabs [data-baseweb="tab-list"] { overflow-x: auto; flex-wrap: nowrap; }
+  .stTabs [data-baseweb="tab"] { white-space: nowrap; }
+
+  /* ─── スマホ最適化（幅640px以下）─────────────────────── */
+  @media (max-width: 640px) {
+    .block-container { padding: 0.8rem 0.7rem 1.5rem; }
+    .idx-grid { grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 6px; }
+    .idx-card { padding: 7px 8px; }
+    .idx-label { font-size: 10px; }
+    .idx-price { font-size: 14px; }
+    .idx-chg-up, .idx-chg-down { font-size: 12px; }
+    h1 { font-size: 18px !important; }
+    .stTabs [data-baseweb="tab"] { font-size: 12px; }
+    [data-testid="metric-container"] [data-testid="stMetricValue"] { font-size: 18px !important; }
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -457,19 +481,22 @@ DARK_LAYOUT = dict(
 # ─── UI Sections ──────────────────────────────────────────────────────────────
 
 def render_index_strip(data: dict):
-    cols = st.columns(len(INDICES))
-    for col, (label, _) in zip(cols, INDICES):
+    # st.columns 固定列だとスマホで窮屈なので、自動折り返しの CSS グリッドで描画
+    cards = []
+    for label, _ in INDICES:
         d = data.get(label)
         if not d:
-            col.markdown(f'<div class="idx-card"><div class="idx-label">{label}</div><div class="idx-price">—</div></div>', unsafe_allow_html=True)
+            cards.append(f'<div class="idx-card"><div class="idx-label">{label}</div><div class="idx-price">—</div></div>')
             continue
         cls = chg_class(d["pct_1d"])
-        col.markdown(f"""
-<div class="idx-card">
-  <div class="idx-label">{label}</div>
-  <div class="idx-price">{d['price']:,.2f}</div>
-  <div class="{cls}">{chg_sign(d['pct_1d'])}</div>
-</div>""", unsafe_allow_html=True)
+        cards.append(
+            f'<div class="idx-card">'
+            f'<div class="idx-label">{label}</div>'
+            f'<div class="idx-price">{d["price"]:,.2f}</div>'
+            f'<div class="{cls}">{chg_sign(d["pct_1d"])}</div>'
+            f'</div>'
+        )
+    st.markdown(f'<div class="idx-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
 
 
 def render_dashboard(us_df: pd.DataFrame, jp_df: pd.DataFrame, period_key: str):
