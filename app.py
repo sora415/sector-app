@@ -747,6 +747,144 @@ def render_short_tab(tickers: list):
     st.caption("※ 米国株のFINRA集計ベース（月2回更新）。個別の機関名別内訳は米国では非開示のため、市場全体の空売り残高を表示しています。")
 
 
+# ─── 日本(JPX)機関別 空売り残高 ─────────────────────────────────────────────────
+
+JPX_BASE = "https://www.jpx.co.jp"
+JPX_SHORT_INDEX = JPX_BASE + "/markets/public/short-selling/index.html"
+_JPX_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+           "(KHTML, like Gecko) Chrome/120 Safari/537.36")
+
+
+@st.cache_data(ttl=3600)
+def fetch_jpx_short() -> tuple:
+    """JPX「空売り残高報告」(機関別)を取得。(DataFrame, 公表日str) を返す。"""
+    import urllib.request, re, io
+    req = urllib.request.Request(JPX_SHORT_INDEX, headers={"User-Agent": _JPX_UA})
+    html = urllib.request.urlopen(req, timeout=30).read().decode("utf-8", "ignore")
+    links = re.findall(r'href="([^"]+_Short_Positions\.xls)"', html)
+    if not links:
+        return pd.DataFrame(), None
+    req2 = urllib.request.Request(JPX_BASE + links[0], headers={"User-Agent": _JPX_UA})
+    data = urllib.request.urlopen(req2, timeout=60).read()
+    raw = pd.ExcelFile(io.BytesIO(data)).parse(0, header=None)
+    disc = None
+    try:
+        disc = pd.to_datetime(raw.iloc[4, 2]).strftime("%Y/%m/%d")
+    except Exception:
+        pass
+    body = raw.iloc[8:, :]
+    df = pd.DataFrame({
+        "コード": body.iloc[:, 2].astype(str).str.replace(r"\.0$", "", regex=True).str.strip(),
+        "銘柄": body.iloc[:, 3].astype(str).str.split("\n").str[0].str.strip(),
+        "機関名": body.iloc[:, 5].astype(str).str.strip(),
+        "残高割合": pd.to_numeric(body.iloc[:, 10], errors="coerce") * 100,
+        "残高数量": pd.to_numeric(body.iloc[:, 11], errors="coerce"),
+        "前回割合": pd.to_numeric(body.iloc[:, 14], errors="coerce") * 100,
+    })
+    df = df.dropna(subset=["残高割合"])
+    df = df[(df["コード"] != "nan") & (df["コード"] != "")]
+    df["増減"] = df["残高割合"] - df["前回割合"]
+    return df.reset_index(drop=True), disc
+
+
+def render_jp_short_tab():
+    """日本(JPX)の機関別空売り残高報告。米国と異なり機関名まで開示されるのが特徴。"""
+    st.caption(
+        "JPX「空売り残高報告」に基づく、報告義務者(残高割合0.5%以上)ごとの空売り残高。"
+        "米国と違い日本は空売りしている機関名まで開示される。"
+        "増減＝前回計算日からの残高割合の変化(プラス＝積み増し／マイナス＝買い戻し)。"
+    )
+    try:
+        df, disc = fetch_jpx_short()
+    except Exception as e:
+        st.error(f"JPXデータを取得できませんでした: {e}")
+        return
+    if df.empty:
+        st.error("JPX空売りデータが見つかりませんでした。時間をおいて再度お試しください。")
+        return
+
+    by_stock = (df.groupby(["コード", "銘柄"], as_index=False)
+                  .agg(合計割合=("残高割合", "sum"), 機関数=("機関名", "nunique"))
+                  .sort_values("合計割合", ascending=False))
+    by_inst = (df.groupby("機関名", as_index=False)
+                 .agg(報告件数=("コード", "count"), 対象銘柄数=("コード", "nunique"))
+                 .sort_values("報告件数", ascending=False))
+    chg = df.dropna(subset=["増減"])
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("公表日", disc or "—")
+    c2.metric("報告総件数", f"{len(df):,}件")
+    c3.metric("対象銘柄数", f"{df['コード'].nunique():,}")
+    c4.metric("報告機関数", f"{df['機関名'].nunique():,}")
+    st.markdown("")
+
+    ps = by_stock.head(20).copy()
+    ps["ラベル"] = ps["銘柄"] + "  " + ps["コード"]
+    ps["text"] = ps["合計割合"].apply(lambda x: f"{x:.1f}%")
+    fig = px.bar(
+        ps.sort_values("合計割合"), x="合計割合", y="ラベル", orientation="h",
+        text="text", color="合計割合", color_continuous_scale="Reds",
+        title="空売り残高割合が高い銘柄 TOP20 (全機関合算)",
+    )
+    fig.update_traces(textposition="outside", marker_line_width=0)
+    fig.update_layout(height=660, xaxis_title="合計空売り残高割合 (%)", yaxis_title="",
+                      showlegend=False, coloraxis_showscale=False, **DARK_LAYOUT)
+    st.plotly_chart(fig, use_container_width=True)
+
+    pi = by_inst.head(15).copy()
+    pi["機関"] = pi["機関名"].str.slice(0, 26)
+    pi["text"] = pi["報告件数"].astype(str) + "銘柄"
+    fig2 = px.bar(
+        pi.sort_values("報告件数"), x="報告件数", y="機関", orientation="h",
+        text="text", color="報告件数", color_continuous_scale="Blues",
+        title="空売り残高を多く報告している機関 TOP15 (報告銘柄数)",
+    )
+    fig2.update_traces(textposition="outside", marker_line_width=0)
+    fig2.update_layout(height=560, xaxis_title="報告銘柄数", yaxis_title="",
+                       showlegend=False, coloraxis_showscale=False, **DARK_LAYOUT)
+    st.plotly_chart(fig2, use_container_width=True)
+
+    def _fmt_pos(d):
+        d = d[["銘柄", "コード", "機関名", "残高割合", "前回割合", "増減"]].copy()
+        d.columns = ["銘柄", "コード", "機関", "今回%", "前回%", "増減pt"]
+        d["機関"] = d["機関"].str.slice(0, 20)
+        for col in ["今回%", "前回%"]:
+            d[col] = d[col].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—")
+        d["増減pt"] = d["増減pt"].apply(lambda x: f"{x:+.2f}" if pd.notna(x) else "—")
+        return d
+
+    cc1, cc2 = st.columns(2)
+    with cc1:
+        st.markdown("**🔺 空売り積み増し (前回比プラス) TOP10**")
+        st.dataframe(_fmt_pos(chg.sort_values("増減", ascending=False).head(10)),
+                     hide_index=True, use_container_width=True)
+    with cc2:
+        st.markdown("**🟢 買い戻し (前回比マイナス) TOP10**")
+        st.dataframe(_fmt_pos(chg.sort_values("増減").head(10)),
+                     hide_index=True, use_container_width=True)
+
+    st.markdown("**🔍 全データを検索 (銘柄名・コード・機関名)**")
+    q = st.text_input("キーワード", "", key="jpx_short_q",
+                      placeholder="例: トヨタ / 7203 / Morgan",
+                      label_visibility="collapsed")
+    view = df
+    if q:
+        ql = q.lower()
+        view = df[df["銘柄"].str.lower().str.contains(ql, na=False)
+                  | df["コード"].str.lower().str.contains(ql, na=False)
+                  | df["機関名"].str.lower().str.contains(ql, na=False)]
+    show = (view.sort_values("残高割合", ascending=False)
+                .head(300)[["コード", "銘柄", "機関名", "残高割合", "前回割合", "増減", "残高数量"]].copy())
+    show.columns = ["コード", "銘柄", "機関名", "残高割合%", "前回%", "増減pt", "残高数量"]
+    show["残高割合%"] = show["残高割合%"].apply(lambda x: f"{x:.2f}%")
+    show["前回%"] = show["前回%"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—")
+    show["増減pt"] = show["増減pt"].apply(lambda x: f"{x:+.2f}" if pd.notna(x) else "—")
+    show["残高数量"] = show["残高数量"].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else "—")
+    st.dataframe(show, hide_index=True, use_container_width=True)
+    st.caption(f"※ JPX空売り残高報告(公表日 {disc or '—'})。残高割合0.5%以上の報告ぶんのみ。"
+               f"全{len(df):,}件中 上位300件を表示。データ更新は平日夕方。")
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 now_jst, now_est, jp_open, us_open = get_market_status()
@@ -785,7 +923,7 @@ period_key = st.radio(
 st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
 (tab_dash, tab_us, tab_jp, tab_global, tab_theme, tab_commo,
- tab_semi, tab_ndx, tab_sp500, tab_jpstock, tab_adr, tab_short, tab_crypto, tab_fx) = st.tabs([
+ tab_semi, tab_ndx, tab_sp500, tab_jpstock, tab_adr, tab_short, tab_jshort, tab_crypto, tab_fx) = st.tabs([
     "🏠 概況ダッシュボード",
     "🇺🇸 米国セクター",
     "🇯🇵 日本セクター",
@@ -798,6 +936,7 @@ st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
     "🗾 日本株ヒートマップ",
     "🌐 世界ADRヒートマップ",
     "📉 空売り動向(米国)",
+    "🔻 空売り(日本/機関別)",
     "₿ 暗号資産",
     "💱 為替",
 ])
@@ -851,6 +990,10 @@ with tab_adr:
 with tab_short:
     with st.spinner("空売り残高データ取得中...(月2回更新)"):
         render_short_tab(SHORT_US_STOCKS)
+
+with tab_jshort:
+    with st.spinner("JPX機関別空売り残高データ取得中..."):
+        render_jp_short_tab()
 
 with tab_crypto:
     with st.spinner("暗号資産データ取得中..."):
