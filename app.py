@@ -250,6 +250,15 @@ GLOBAL_ADR_STOCKS = {
     "台湾・アジア・中東": ["TSM", "SE", "NICE", "CHKP", "WIX", "MNDY"],
 }
 
+# 空売り(ショート)動向を見る米国株ユニバース（高流動＋空売りが多い銘柄中心）
+SHORT_US_STOCKS = [
+    "TSLA", "NVDA", "AAPL", "AMD", "META", "AMZN", "MSFT", "GOOGL", "NFLX", "INTC",
+    "MU", "QCOM", "AVGO", "SMCI", "PLTR", "COIN", "HOOD", "SOFI", "MARA", "RIOT",
+    "CVNA", "AI", "RIVN", "LCID", "NIO", "XPEV", "LI", "F", "GM", "BABA",
+    "PDD", "SNAP", "UBER", "ABNB", "SHOP", "PYPL", "ROKU", "DIS", "BA", "DKNG",
+    "CVS", "XOM", "WMT", "COST", "JPM", "BAC",
+]
+
 PERIOD_OPTS = {"前日比": "1d", "5日間": "5d", "1ヶ月": "1mo"}
 
 # 銘柄表示名（日本株や見にくいティッカーに短い名前を付ける）
@@ -412,6 +421,46 @@ def fetch_stocks_data(stocks_map: dict) -> dict:
             if d:
                 out[t] = d
     return out
+
+
+def fetch_short_one(symbol: str) -> dict | None:
+    """1銘柄の空売り(ショート)残高情報を返す。FINRA集計・月2回更新。"""
+    try:
+        info = yf.Ticker(symbol).info
+        sp = info.get("shortPercentOfFloat")
+        ss = info.get("sharesShort")
+        pm = info.get("sharesShortPriorMonth")
+        if sp is None and ss is None:
+            return None
+        chg = None
+        if ss and pm:
+            chg = round((ss - pm) / pm * 100, 1)
+        return {
+            "pct_float": round(sp * 100, 2) if sp else None,   # 空売り比率(対浮動株)
+            "days": info.get("shortRatio"),                     # 買い戻し日数(days-to-cover)
+            "shares_short": ss,
+            "chg_mom": chg,                                     # 前月比の増減率
+            "date": info.get("dateShortInterest"),
+            "price": info.get("regularMarketPrice") or info.get("currentPrice"),
+        }
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=1800)
+def fetch_short_data(tickers: tuple) -> pd.DataFrame:
+    """複数銘柄の空売り残高をまとめて取得（.info は重いのでキャッシュ長め）。"""
+    rows = []
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futs = {ex.submit(fetch_short_one, t): t for t in tickers}
+        for f in as_completed(futs):
+            t = futs[f]
+            d = f.result()
+            if d and d.get("pct_float") is not None:
+                rows.append({"銘柄": t, **d})
+    if not rows:
+        return pd.DataFrame()
+    return pd.DataFrame(rows).sort_values("pct_float", ascending=False).reset_index(drop=True)
 
 
 def build_heatmap_df(ticker_data: dict, stocks_map: dict, period_key: str) -> pd.DataFrame:
@@ -641,6 +690,63 @@ def render_heatmap_tab(stocks_map: dict, title: str, period_key: str, height: in
         st.dataframe(tbl, hide_index=True, use_container_width=True)
 
 
+def render_short_tab(tickers: list):
+    """米国株の空売り(ショート)残高動向。FINRA集計・月2回更新。"""
+    st.caption(
+        "空売り比率(対浮動株)＝発行済のうち空売りされている割合。買い戻し日数＝出来高で割った日数(高いほど需給逼迫)。"
+        "前月比プラス＝空売り積み増し(弱気)、マイナス＝買い戻し(ショートカバー)。"
+    )
+    df = fetch_short_data(tuple(tickers))
+    if df.empty:
+        st.error("空売りデータを取得できませんでした。時間をおいて再度お試しください。")
+        return
+
+    top = df.iloc[0]
+    df_chg = df.dropna(subset=["chg_mom"])
+    most_added = df_chg.loc[df_chg["chg_mom"].idxmax()] if not df_chg.empty else None
+    most_covered = df_chg.loc[df_chg["chg_mom"].idxmin()] if not df_chg.empty else None
+    latest_date = None
+    dts = [d for d in df["date"].tolist() if d]
+    if dts:
+        latest_date = datetime.utcfromtimestamp(max(dts)).strftime("%Y/%m/%d")
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("空売り比率トップ", top["銘柄"], delta=f'{top["pct_float"]:.2f}%')
+    if most_added is not None:
+        c2.metric("積み増しトップ(前月比)", most_added["銘柄"], delta=f'{most_added["chg_mom"]:+.1f}%')
+    if most_covered is not None:
+        c3.metric("買い戻しトップ(前月比)", most_covered["銘柄"], delta=f'{most_covered["chg_mom"]:+.1f}%')
+    c4.metric("データ基準日", latest_date or "—")
+    st.markdown("")
+
+    # 空売り比率の横棒（色=前月比の増減。積み増し=赤、買い戻し=緑）
+    plot_df = df.head(30).copy()
+    plot_df["text"] = plot_df["pct_float"].apply(lambda x: f"{x:.1f}%")
+    plot_df["color"] = plot_df["chg_mom"].fillna(0)
+    fig = px.bar(
+        plot_df.sort_values("pct_float"), x="pct_float", y="銘柄", orientation="h",
+        text="text", color="color", color_continuous_scale=BAR_COLORS,
+        color_continuous_midpoint=0, title="空売り比率(対浮動株) — 色=前月比の増減",
+    )
+    fig.update_traces(textposition="outside", marker_line_width=0)
+    fig.update_layout(height=max(500, len(plot_df) * 26),
+                      coloraxis_colorbar=dict(title="前月比%"),
+                      xaxis_title="空売り比率 (%)", yaxis_title="", showlegend=False,
+                      **DARK_LAYOUT)
+    st.plotly_chart(fig, use_container_width=True)
+
+    with st.expander("📋 詳細テーブルを表示", expanded=True):
+        tbl = df[["銘柄", "pct_float", "days", "chg_mom", "price"]].copy()
+        tbl.columns = ["銘柄", "空売り比率(%)", "買い戻し日数", "前月比(%)", "現在値"]
+        tbl["空売り比率(%)"] = tbl["空売り比率(%)"].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "—")
+        tbl["買い戻し日数"] = tbl["買い戻し日数"].apply(lambda x: f"{x:.1f}日" if pd.notna(x) else "—")
+        tbl["前月比(%)"] = tbl["前月比(%)"].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "—")
+        tbl["現在値"] = tbl["現在値"].apply(lambda x: f"{x:,.2f}" if pd.notna(x) else "—")
+        st.dataframe(tbl, hide_index=True, use_container_width=True)
+
+    st.caption("※ 米国株のFINRA集計ベース（月2回更新）。個別の機関名別内訳は米国では非開示のため、市場全体の空売り残高を表示しています。")
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 now_jst, now_est, jp_open, us_open = get_market_status()
@@ -679,7 +785,7 @@ period_key = st.radio(
 st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
 (tab_dash, tab_us, tab_jp, tab_global, tab_theme, tab_commo,
- tab_semi, tab_ndx, tab_sp500, tab_jpstock, tab_adr, tab_crypto, tab_fx) = st.tabs([
+ tab_semi, tab_ndx, tab_sp500, tab_jpstock, tab_adr, tab_short, tab_crypto, tab_fx) = st.tabs([
     "🏠 概況ダッシュボード",
     "🇺🇸 米国セクター",
     "🇯🇵 日本セクター",
@@ -691,6 +797,7 @@ st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
     "🗽 S&P500ヒートマップ",
     "🗾 日本株ヒートマップ",
     "🌐 世界ADRヒートマップ",
+    "📉 空売り動向(米国)",
     "₿ 暗号資産",
     "💱 為替",
 ])
@@ -740,6 +847,10 @@ with tab_jpstock:
 with tab_adr:
     with st.spinner("世界ADR個別株データ取得中..."):
         render_heatmap_tab(GLOBAL_ADR_STOCKS, "世界の大型株(ADR)", period_key, height=820)
+
+with tab_short:
+    with st.spinner("空売り残高データ取得中...(月2回更新)"):
+        render_short_tab(SHORT_US_STOCKS)
 
 with tab_crypto:
     with st.spinner("暗号資産データ取得中..."):
